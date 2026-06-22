@@ -55,11 +55,16 @@ jobs:
           mkdir -p "$sdk_output"
           chmod 0777 "$sdk_output"
           docker run --rm \
-            --volume "$PWD:/builder/localfeed/${{ env.PACKAGE_NAME }}:ro" \
+            --volume "$PWD:/feed-source:ro" \
             --volume "$sdk_output:/output" \
             "openwrt/sdk:${{ matrix.arch }}" \
             /bin/bash -euxo pipefail -c '
               cd /builder
+              mkdir -p "/builder/localfeed/${{ env.PACKAGE_NAME }}"
+              cp -a /feed-source/. "/builder/localfeed/${{ env.PACKAGE_NAME }}/"
+              if [ "${{ matrix.format }}" = "apk" ]; then
+                sed -E -i "s/^PKG_VERSION:=([0-9.]+)-([0-9]+)$/PKG_VERSION:=\1.\2/" "/builder/localfeed/${{ env.PACKAGE_NAME }}/Makefile"
+              fi
               [ ! -f setup.sh ] || bash setup.sh
               sed \
                 -e "s,https://git.openwrt.org/feed/,https://github.com/openwrt/," \
@@ -69,20 +74,15 @@ jobs:
               echo "src-link action /builder/localfeed" >> feeds.conf
               ./scripts/feeds update -a
               ./scripts/feeds install -p action -f "${{ env.PACKAGE_NAME }}"
-              version_args=()
-              if [ "${{ matrix.format }}" = "apk" ]; then
-                pkg_version="$(sed -n "s/^PKG_VERSION:=//p" "/builder/localfeed/${{ env.PACKAGE_NAME }}/Makefile" | tr "-" ".")"
-                version_args=("PKG_VERSION=${pkg_version}")
-              fi
               {
                 echo "CONFIG_PACKAGE_${{ env.PACKAGE_NAME }}=m"
                 echo "CONFIG_LUCI_LANG_${{ env.LUCI_LANG }}=y"
                 echo "CONFIG_PACKAGE_${{ env.LUCI_LANG_PACKAGE }}=m"
               } >> .config
               make defconfig
-              make "${version_args[@]}" "package/${{ env.PACKAGE_NAME }}/download" V=s
-              make "${version_args[@]}" "package/${{ env.PACKAGE_NAME }}/check" V=s
-              make "${version_args[@]}" "package/${{ env.PACKAGE_NAME }}/compile" BUILD_LOG=1 CONFIG_AUTOREMOVE=y V=s -j"$(nproc)"
+              make "package/${{ env.PACKAGE_NAME }}/download" V=s
+              make "package/${{ env.PACKAGE_NAME }}/check" V=s
+              make "package/${{ env.PACKAGE_NAME }}/compile" BUILD_LOG=1 CONFIG_AUTOREMOVE=y V=s -j"$(nproc)"
               find bin/packages -type f \( \
                 -name "${{ env.PACKAGE_NAME }}*.${{ matrix.format }}" \
                 -o -name "${{ env.LUCI_LANG_PACKAGE }}*.${{ matrix.format }}" \
