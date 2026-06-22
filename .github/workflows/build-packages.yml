@@ -1,0 +1,98 @@
+name: Build OpenWrt packages
+
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "v*"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ipk-aarch64_cortex-a53-24.10.5
+            arch: aarch64_cortex-a53-24.10.5
+            package_arch: aarch64_cortex-a53
+            package_ext: ipk
+          - name: apk-aarch64_cortex-a53-snapshot
+            arch: aarch64_cortex-a53
+            package_arch: aarch64_cortex-a53
+            package_ext: apk
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare local feed
+        run: |
+          mkdir -p "$RUNNER_TEMP/feed/luci-app-adguardhome"
+          rsync -a --delete \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude 'bin' \
+            --exclude 'dist' \
+            --exclude 'logs' \
+            ./ "$RUNNER_TEMP/feed/luci-app-adguardhome/"
+
+      - name: Build package
+        uses: openwrt/gh-action-sdk@main
+        env:
+          ARCH: ${{ matrix.arch }}
+          FEED_DIR: ${{ runner.temp }}/feed
+          FEEDNAME: local
+          PACKAGES: luci-app-adguardhome
+          NO_REFRESH_CHECK: 1
+          V: s
+
+      - name: Collect package outputs
+        run: |
+          output_dir="dist/${{ matrix.name }}"
+          package_dir="bin/packages/${{ matrix.package_arch }}/local"
+          mkdir -p "$output_dir"
+          find "$package_dir" -maxdepth 1 -type f \
+            \( -name '*.ipk' -o -name '*.apk' -o -name '*.adb' -o -name 'Packages*' -o -name 'packages*' \) \
+            -exec cp -v {} "$output_dir/" \;
+          find "$output_dir" -type f -name '*.${{ matrix.package_ext }}' | grep -q .
+          sha256sum "$output_dir"/* > "$output_dir/SHA256SUMS-${{ matrix.name }}"
+          ls -lh "$output_dir"
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: dist/${{ matrix.name }}/*
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release assets
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Publish assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          gh release view "$TAG_NAME" >/dev/null 2>&1 || \
+            gh release create "$TAG_NAME" --title "$TAG_NAME" --notes "Automated OpenWrt package build for $TAG_NAME"
+          find dist -type f \
+            \( -name '*.ipk' -o -name '*.apk' -o -name '*.adb' -o -name 'Packages*' -o -name 'packages*' -o -name 'SHA256SUMS-*' \) \
+            -print0 | xargs -0 gh release upload "$TAG_NAME" --clobber

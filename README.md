@@ -36,7 +36,17 @@
  - 反馈出现大量127.0.0.1查询了localhost的请求，问题出现原因是ddns插件，如果不用ddns插件，请删除或者注释掉\etc\hotplug.d\iface\95-ddns的内容，如果还有其他来自本机的异常查询情况，高级玩家可以使用kmod来查找原因https://github.com/rufengsuixing/kmod-plog-port
  - 如果出现需要多次提交才有反应的现象请及时提交issue
 #### 使用方法
- - 下载release，使用opkg安装即可
+ - OpenWrt/ImmortalWrt 24.10 及更早版本：下载 release 中的 `.ipk`，使用 `opkg` 安装：
+   ```sh
+   opkg install ./luci-app-adguardhome_*.ipk
+   opkg install ./luci-i18n-adguardhome-zh-cn_*.ipk
+   ```
+ - OpenWrt 25.12/snapshot 及更新版本：下载 release 中的 `.apk`，使用 `apk` 安装：
+   ```sh
+   apk add --allow-untrusted ./luci-app-adguardhome-*.apk
+   apk add --allow-untrusted ./luci-i18n-adguardhome-zh-cn-*.apk
+   ```
+ - GitHub Actions 会在 `master`、PR、手动触发时构建 `aarch64_cortex-a53` 的 `.ipk` 和 `.apk`；推送 `v*` tag 时会自动上传到 GitHub Release。
  - 或者编译op时clone本项目加入软件包并勾选
 #### 关于压缩
 本着较真的想法，我测试了在jffs2的压缩文件系统上进行upx压缩结果的内存占用与空间占用(单位kb，使用最好压缩)<br>
@@ -82,7 +92,17 @@ Complex openwrt AdGuardHome luci
  https://github.com/AdguardTeam/AdGuardHome/issues/1191<br>~~
  - find so many localhost query from 127.0.0.1,the ddns plugin is the reason,if you don\`t use ddns, please remove or comment \etc\hotplug.d\iface\95-ddns
 #### usage
- - download release，install it with opkg
+ - OpenWrt/ImmortalWrt 24.10 and older: download `.ipk` files from the release and install them with `opkg`:
+   ```sh
+   opkg install ./luci-app-adguardhome_*.ipk
+   opkg install ./luci-i18n-adguardhome-zh-cn_*.ipk
+   ```
+ - OpenWrt 25.12/snapshot and newer: download `.apk` files from the release and install them with `apk`:
+   ```sh
+   apk add --allow-untrusted ./luci-app-adguardhome-*.apk
+   apk add --allow-untrusted ./luci-i18n-adguardhome-zh-cn-*.apk
+   ```
+ - GitHub Actions builds `aarch64_cortex-a53` `.ipk` and `.apk` packages on `master`, pull requests, and manual runs. Pushing a `v*` tag publishes package assets to GitHub Releases.
  - or when make op,clone the code to the package path and set it as y or m
 
 #### pic
