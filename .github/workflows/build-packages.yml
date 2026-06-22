@@ -20,7 +20,9 @@ permissions:
   contents: read
 
 env:
-  PACKAGES: luci-app-adguardhome luci-i18n-adguardhome-zh-cn
+  PACKAGE_NAME: luci-app-adguardhome
+  LUCI_LANG: zh_Hans
+  LUCI_LANG_PACKAGE: luci-i18n-adguardhome-zh-cn
 
 jobs:
   build:
@@ -46,12 +48,41 @@ jobs:
           fetch-depth: 0
 
       - name: Build packages
-        uses: openwrt/gh-action-sdk@main
-        env:
-          ARCH: ${{ matrix.arch }}
-          BUILD_LOG: 1
-          PACKAGES: ${{ env.PACKAGES }}
-          V: s
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdk_output="$PWD/sdk-output"
+          mkdir -p "$sdk_output"
+          docker run --rm \
+            --volume "$PWD:/feed" \
+            --volume "$sdk_output:/output" \
+            "openwrt/sdk:${{ matrix.arch }}" \
+            /bin/bash -euxo pipefail -c '
+              cd /builder
+              [ ! -f setup.sh ] || bash setup.sh
+              sed \
+                -e "s,https://git.openwrt.org/feed/,https://github.com/openwrt/," \
+                -e "s,https://git.openwrt.org/openwrt/,https://github.com/openwrt/," \
+                -e "s,https://git.openwrt.org/project/,https://github.com/openwrt/," \
+                feeds.conf.default > feeds.conf
+              echo "src-link action /feed" >> feeds.conf
+              ./scripts/feeds update -a
+              ./scripts/feeds install -p action -f "${{ env.PACKAGE_NAME }}"
+              {
+                echo "CONFIG_PACKAGE_${{ env.PACKAGE_NAME }}=m"
+                echo "CONFIG_LUCI_LANG_${{ env.LUCI_LANG }}=m"
+                echo "CONFIG_PACKAGE_${{ env.LUCI_LANG_PACKAGE }}=m"
+              } >> .config
+              make defconfig
+              make "package/${{ env.PACKAGE_NAME }}/download" V=s
+              make "package/${{ env.PACKAGE_NAME }}/check" V=s
+              make "package/${{ env.PACKAGE_NAME }}/compile" BUILD_LOG=1 CONFIG_AUTOREMOVE=y V=s -j"$(nproc)"
+              find bin/packages -type f \( \
+                -name "${{ env.PACKAGE_NAME }}*.${{ matrix.format }}" \
+                -o -name "${{ env.LUCI_LANG_PACKAGE }}*.${{ matrix.format }}" \
+              \) -print -exec cp -v "{}" /output/ ";"
+            '
+          sudo chown -R "$USER:$USER" "$sdk_output"
 
       - name: Collect packages
         shell: bash
@@ -59,8 +90,9 @@ jobs:
           set -euo pipefail
           output_dir="dist/openwrt-${{ matrix.openwrt }}-${{ matrix.format }}"
           mkdir -p "$output_dir"
-          find bin/packages -type f -name '${{ matrix.package_glob }}' -print -exec cp -v '{}' "$output_dir/" ';'
-          test -n "$(find "$output_dir" -type f -name '${{ matrix.package_glob }}' -print -quit)"
+          find sdk-output -type f -name '${{ matrix.package_glob }}' -print -exec cp -v '{}' "$output_dir/" ';'
+          test -n "$(find "$output_dir" -type f -name '${{ env.PACKAGE_NAME }}*.${{ matrix.format }}' -print -quit)"
+          test -n "$(find "$output_dir" -type f -name '${{ env.LUCI_LANG_PACKAGE }}*.${{ matrix.format }}' -print -quit)"
           (
             cd "$output_dir"
             sha256sum * > "SHA256SUMS-openwrt-${{ matrix.openwrt }}-${{ matrix.format }}.txt"
