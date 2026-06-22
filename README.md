@@ -1,15 +1,20 @@
 # luci-app-adguardhome
 复杂的AdGuardHome的openwrt的luci界面
 
-## 维护说明
+## 下载与安装
 
-这个 fork 主要补充新版 OpenWrt 构建与兼容性：
+从 [Releases](https://github.com/AkihaZhang/luci-app-adguardhome/releases) 下载适合当前系统的包：
 
-- `master` 每次构建成功后会自动更新 [latest Release](https://github.com/AkihaZhang/luci-app-adguardhome/releases/tag/latest)，包含 IPK、APK、中文翻译包和 SHA256SUMS。
-- 正式版本仍可通过 `v*` tag 或手动 `workflow_dispatch` 的 `release_tag` 发布到对应版本 Release。
-- OpenWrt 24.10.x 使用 `ipk` 包；新版 apk 包管理格式使用 `apk` 包。
-- `beta` 分支用于先验证上游 PR 或兼容性改动，确认构建无问题后再合并到 `master`。
-- DNS 重定向已改为通过 UCI 管理 firewall redirect，避免新版 OpenWrt/fw4 下直接调用 `iptables`/`ip6tables` 的兼容问题。
+- OpenWrt 24.10.x / opkg 系统使用 `.ipk`
+- apk 包管理系统使用 `.apk`
+- 中文界面需要同时安装 `luci-i18n-adguardhome-zh-cn`
+
+安装示例：
+
+```sh
+opkg install luci-app-adguardhome_*.ipk luci-i18n-adguardhome-zh-cn_*.ipk
+apk add --allow-untrusted luci-app-adguardhome-*.apk luci-i18n-adguardhome-zh-cn-*.apk
+```
 
  - 可以管理网页端口
  - luci下载/更新核心版本（支持自定义链接下载）
@@ -46,9 +51,7 @@
  - 反馈出现大量127.0.0.1查询了localhost的请求，问题出现原因是ddns插件，如果不用ddns插件，请删除或者注释掉\etc\hotplug.d\iface\95-ddns的内容，如果还有其他来自本机的异常查询情况，高级玩家可以使用kmod来查找原因https://github.com/rufengsuixing/kmod-plog-port
  - 如果出现需要多次提交才有反应的现象请及时提交issue
 #### 使用方法
- - 下载 release，根据系统包格式安装：
-   - `.ipk`：`opkg install luci-app-adguardhome_*.ipk luci-i18n-adguardhome-zh-cn_*.ipk`
-   - `.apk`：`apk add --allow-untrusted luci-app-adguardhome-*.apk luci-i18n-adguardhome-zh-cn-*.apk`
+ - 下载 release，根据系统包格式安装 `.ipk` 或 `.apk`
  - 或者编译op时clone本项目加入软件包并勾选
 #### 关于压缩
 本着较真的想法，我测试了在jffs2的压缩文件系统上进行upx压缩结果的内存占用与空间占用(单位kb，使用最好压缩)<br>
@@ -69,15 +72,20 @@ VmRSS运存占用值<br>
 
 Complex openwrt AdGuardHome luci
 
-## Maintenance notes
+## Download
 
-This fork keeps the package build compatible with newer OpenWrt releases:
+Download the package matching your system from [Releases](https://github.com/AkihaZhang/luci-app-adguardhome/releases):
 
-- Every successful `master` build updates the [latest Release](https://github.com/AkihaZhang/luci-app-adguardhome/releases/tag/latest) with IPK, APK, zh-cn translation packages, and SHA256SUMS.
-- Versioned releases can still be published from `v*` tags or manual `workflow_dispatch` runs with `release_tag`.
-- OpenWrt 24.10.x uses `ipk`; newer apk-based builds use `apk`.
-- The `beta` branch is used for upstream PR and compatibility testing before merging into `master`.
-- DNS redirect now uses UCI firewall redirects instead of direct `iptables`/`ip6tables` calls for better fw4 compatibility.
+- Use `.ipk` on OpenWrt 24.10.x / opkg systems.
+- Use `.apk` on apk-based systems.
+- Install `luci-i18n-adguardhome-zh-cn` as well for the Chinese LuCI translation.
+
+Examples:
+
+```sh
+opkg install luci-app-adguardhome_*.ipk luci-i18n-adguardhome-zh-cn_*.ipk
+apk add --allow-untrusted luci-app-adguardhome-*.apk luci-i18n-adguardhome-zh-cn-*.apk
+```
 
  - can manage browser port
  - download/update core in luci
@@ -104,9 +112,7 @@ This fork keeps the package build compatible with newer OpenWrt releases:
  https://github.com/AdguardTeam/AdGuardHome/issues/1191<br>~~
  - find so many localhost query from 127.0.0.1,the ddns plugin is the reason,if you don\`t use ddns, please remove or comment \etc\hotplug.d\iface\95-ddns
 #### usage
- - download release assets and install the package matching your system:
-   - `.ipk`: `opkg install luci-app-adguardhome_*.ipk luci-i18n-adguardhome-zh-cn_*.ipk`
-   - `.apk`: `apk add --allow-untrusted luci-app-adguardhome-*.apk luci-i18n-adguardhome-zh-cn-*.apk`
+ - download release assets and install the `.ipk` or `.apk` package matching your system
  - or when make op,clone the code to the package path and set it as y or m
 
 #### pic
