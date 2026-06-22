@@ -53,6 +53,7 @@ jobs:
           set -euo pipefail
           sdk_output="$PWD/sdk-output"
           mkdir -p "$sdk_output"
+          chmod 0777 "$sdk_output"
           docker run --rm \
             --volume "$PWD:/builder/localfeed/${{ env.PACKAGE_NAME }}:ro" \
             --volume "$sdk_output:/output" \
