@@ -146,7 +146,7 @@ jobs:
             title="${{ github.ref_name }}"
           elif [ "${{ github.ref }}" = "refs/heads/master" ]; then
             tag="${{ env.ROLLING_RELEASE_TAG }}"
-            title="Latest automated build"
+            title="${{ env.PACKAGE_NAME }}"
             rolling=true
           else
             echo "Unsupported release trigger" >&2
