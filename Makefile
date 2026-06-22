@@ -22,9 +22,10 @@ endef
 
 define Package/luci-app-adguardhome/postinst
 #!/bin/sh
+	[ -n "$${IPKG_INSTROOT}" ] && exit 0
 	/etc/init.d/AdGuardHome enable >/dev/null 2>&1
 	enable=$(uci get AdGuardHome.AdGuardHome.enabled 2>/dev/null)
-	if [ "$enable" == "1" ]; then
+	if [ "$enable" = "1" ]; then
 		/etc/init.d/AdGuardHome reload >/dev/null 2>&1
 	fi
 	rm -f /tmp/luci-indexcache
