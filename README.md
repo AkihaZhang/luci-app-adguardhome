@@ -5,7 +5,7 @@
 
 从 [Releases](https://github.com/AkihaZhang/luci-app-adguardhome/releases) 下载适合当前系统的包：
 
-- OpenWrt 24.10.x / opkg 系统使用 `.ipk`
+- opkg 包管理系统使用 `.ipk`
 - apk 包管理系统使用 `.apk`
 - 中文界面需要同时安装 `luci-i18n-adguardhome-zh-cn`
 
@@ -76,7 +76,7 @@ Complex openwrt AdGuardHome luci
 
 Download the package matching your system from [Releases](https://github.com/AkihaZhang/luci-app-adguardhome/releases):
 
-- Use `.ipk` on OpenWrt 24.10.x / opkg systems.
+- Use `.ipk` on opkg-based systems.
 - Use `.apk` on apk-based systems.
 - Install `luci-i18n-adguardhome-zh-cn` as well for the Chinese LuCI translation.
 
