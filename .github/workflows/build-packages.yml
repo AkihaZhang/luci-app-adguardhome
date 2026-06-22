@@ -100,10 +100,6 @@ jobs:
           find sdk-output -type f -name '${{ matrix.package_glob }}' -print -exec cp -v '{}' "$output_dir/" ';'
           test -n "$(find "$output_dir" -type f -name '${{ env.PACKAGE_NAME }}*.${{ matrix.format }}' -print -quit)"
           test -n "$(find "$output_dir" -type f -name '${{ env.LUCI_LANG_PACKAGE }}*.${{ matrix.format }}' -print -quit)"
-          (
-            cd "$output_dir"
-            sha256sum * > "SHA256SUMS-openwrt-${{ matrix.openwrt }}-${{ matrix.format }}.txt"
-          )
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
@@ -198,5 +194,5 @@ jobs:
               --notes-file release-notes.md \
               "${edit_args[@]}"
           fi
-          find dist -type f \( -name '*.ipk' -o -name '*.apk' -o -name 'SHA256SUMS-*.txt' \) -print0 \
+          find dist -type f \( -name '*.ipk' -o -name '*.apk' \) -print0 \
             | xargs -0 gh release upload "$RELEASE_TAG" --clobber
