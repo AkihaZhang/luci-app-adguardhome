@@ -180,18 +180,7 @@ jobs:
           ROLLING_RELEASE: ${{ steps.release.outputs.rolling }}
         run: |
           set -euo pipefail
-          {
-            if [ "$ROLLING_RELEASE" = "true" ]; then
-              echo "Rolling release updated automatically from the latest successful master build."
-            else
-              echo "OpenWrt package release."
-            fi
-            echo
-            echo "- Source commit: \`$GITHUB_SHA\`"
-            echo "- Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-            echo "- OpenWrt 24.10.7: ipk"
-            echo "- OpenWrt 25.12.4: apk"
-          } > release-notes.md
+          : > release-notes.md
           if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             latest_arg=()
             [ "$ROLLING_RELEASE" = "true" ] && latest_arg=(--latest)
