@@ -23,6 +23,7 @@ env:
   PACKAGE_NAME: luci-app-adguardhome
   LUCI_LANG: zh_Hans
   LUCI_LANG_PACKAGE: luci-i18n-adguardhome-zh-cn
+  ROLLING_RELEASE_TAG: latest
 
 jobs:
   build:
@@ -117,26 +118,96 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+    if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'push' && github.ref == 'refs/heads/master') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Download workflow artifacts
         uses: actions/download-artifact@v4
         with:
           path: dist
+
+      - name: Resolve release target
+        id: release
+        shell: bash
+        env:
+          INPUT_RELEASE_TAG: ${{ inputs.release_tag || '' }}
+        run: |
+          set -euo pipefail
+          rolling=false
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "$INPUT_RELEASE_TAG" ]; then
+            tag="$INPUT_RELEASE_TAG"
+            title="$INPUT_RELEASE_TAG"
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
+            tag="${{ github.ref_name }}"
+            title="${{ github.ref_name }}"
+          elif [ "${{ github.ref }}" = "refs/heads/master" ]; then
+            tag="${{ env.ROLLING_RELEASE_TAG }}"
+            title="Latest automated build"
+            rolling=true
+          else
+            echo "Unsupported release trigger" >&2
+            exit 1
+          fi
+          {
+            echo "tag=$tag"
+            echo "title=$title"
+            echo "rolling=$rolling"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Move rolling release tag
+        if: steps.release.outputs.rolling == 'true'
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f "$RELEASE_TAG" "$GITHUB_SHA"
+          git push --force origin "refs/tags/$RELEASE_TAG"
 
       - name: Create or update GitHub release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_TITLE: ${{ steps.release.outputs.title }}
+          ROLLING_RELEASE: ${{ steps.release.outputs.rolling }}
         run: |
           set -euo pipefail
+          {
+            if [ "$ROLLING_RELEASE" = "true" ]; then
+              echo "Rolling release updated automatically from the latest successful master build."
+            else
+              echo "OpenWrt package release."
+            fi
+            echo
+            echo "- Source commit: \`$GITHUB_SHA\`"
+            echo "- Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo "- OpenWrt 24.10.7: ipk"
+            echo "- OpenWrt 25.12.4: apk"
+          } > release-notes.md
           if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            latest_arg=()
+            [ "$ROLLING_RELEASE" = "true" ] && latest_arg=(--latest)
             gh release create "$RELEASE_TAG" \
-              --title "$RELEASE_TAG" \
+              --title "$RELEASE_TITLE" \
               --target "$GITHUB_SHA" \
-              --notes "OpenWrt packages built for 24.10.7 (ipk) and 25.12.4 (apk)."
+              --notes-file release-notes.md \
+              "${latest_arg[@]}"
+          else
+            edit_args=()
+            [ "$ROLLING_RELEASE" = "true" ] && edit_args=(--latest)
+            gh release edit "$RELEASE_TAG" \
+              --title "$RELEASE_TITLE" \
+              --target "$GITHUB_SHA" \
+              --notes-file release-notes.md \
+              "${edit_args[@]}"
           fi
           find dist -type f \( -name '*.ipk' -o -name '*.apk' -o -name 'SHA256SUMS-*.txt' \) -print0 \
             | xargs -0 gh release upload "$RELEASE_TAG" --clobber
