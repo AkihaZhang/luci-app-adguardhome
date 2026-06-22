@@ -69,15 +69,20 @@ jobs:
               echo "src-link action /builder/localfeed" >> feeds.conf
               ./scripts/feeds update -a
               ./scripts/feeds install -p action -f "${{ env.PACKAGE_NAME }}"
+              version_args=()
+              if [ "${{ matrix.format }}" = "apk" ]; then
+                pkg_version="$(sed -n "s/^PKG_VERSION:=//p" "/builder/localfeed/${{ env.PACKAGE_NAME }}/Makefile" | tr "-" ".")"
+                version_args=("PKG_VERSION=${pkg_version}")
+              fi
               {
                 echo "CONFIG_PACKAGE_${{ env.PACKAGE_NAME }}=m"
                 echo "CONFIG_LUCI_LANG_${{ env.LUCI_LANG }}=y"
                 echo "CONFIG_PACKAGE_${{ env.LUCI_LANG_PACKAGE }}=m"
               } >> .config
               make defconfig
-              make "package/${{ env.PACKAGE_NAME }}/download" V=s
-              make "package/${{ env.PACKAGE_NAME }}/check" V=s
-              make "package/${{ env.PACKAGE_NAME }}/compile" BUILD_LOG=1 CONFIG_AUTOREMOVE=y V=s -j"$(nproc)"
+              make "${version_args[@]}" "package/${{ env.PACKAGE_NAME }}/download" V=s
+              make "${version_args[@]}" "package/${{ env.PACKAGE_NAME }}/check" V=s
+              make "${version_args[@]}" "package/${{ env.PACKAGE_NAME }}/compile" BUILD_LOG=1 CONFIG_AUTOREMOVE=y V=s -j"$(nproc)"
               find bin/packages -type f \( \
                 -name "${{ env.PACKAGE_NAME }}*.${{ matrix.format }}" \
                 -o -name "${{ env.LUCI_LANG_PACKAGE }}*.${{ matrix.format }}" \
