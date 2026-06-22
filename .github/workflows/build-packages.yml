@@ -54,7 +54,7 @@ jobs:
           sdk_output="$PWD/sdk-output"
           mkdir -p "$sdk_output"
           docker run --rm \
-            --volume "$PWD:/feed" \
+            --volume "$PWD:/builder/localfeed/${{ env.PACKAGE_NAME }}:ro" \
             --volume "$sdk_output:/output" \
             "openwrt/sdk:${{ matrix.arch }}" \
             /bin/bash -euxo pipefail -c '
@@ -65,12 +65,12 @@ jobs:
                 -e "s,https://git.openwrt.org/openwrt/,https://github.com/openwrt/," \
                 -e "s,https://git.openwrt.org/project/,https://github.com/openwrt/," \
                 feeds.conf.default > feeds.conf
-              echo "src-link action /feed" >> feeds.conf
+              echo "src-link action /builder/localfeed" >> feeds.conf
               ./scripts/feeds update -a
               ./scripts/feeds install -p action -f "${{ env.PACKAGE_NAME }}"
               {
                 echo "CONFIG_PACKAGE_${{ env.PACKAGE_NAME }}=m"
-                echo "CONFIG_LUCI_LANG_${{ env.LUCI_LANG }}=m"
+                echo "CONFIG_LUCI_LANG_${{ env.LUCI_LANG }}=y"
                 echo "CONFIG_PACKAGE_${{ env.LUCI_LANG_PACKAGE }}=m"
               } >> .config
               make defconfig
